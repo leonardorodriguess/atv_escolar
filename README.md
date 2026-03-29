@@ -45,8 +45,8 @@ Aplicação web fullstack onde **Professores** criam atividades, corrigem respos
 
 ```bash
 # 1. Clone o repositório
-git clone <url-do-repositorio>
-cd <nome-do-repositorio>
+git clone https://github.com/leonardorodriguess/atv_escolar.git
+cd atv_escolar
 
 # 2. Suba os containers
 docker-compose up --build
@@ -134,21 +134,22 @@ Caso prefira rodar cada serviço separadamente na sua máquina, consulte:
 
 ## Endpoints da API
 
-| Método | Rota                          | Acesso      | Descrição                              |
-|--------|-------------------------------|-------------|----------------------------------------|
-| POST   | `/auth/login`                 | Público     | Login (retorna JWT + dados do usuário) |
-| GET    | `/me`                         | Autenticado | Dados do usuário logado                |
-| GET    | `/turmas`                     | Autenticado | Lista todas as turmas                  |
-| POST   | `/turmas/criar`               | Professor   | Criar nova turma                       |
-| GET    | `/turmas/{id}/alunos/`        | Professor   | Listar alunos de uma turma             |
-| GET    | `/me/atividades`              | Ambos       | Professor: suas atividades / Aluno: atividades da turma |
-| POST   | `/atividades`                 | Professor   | Criar nova atividade                   |
-| GET    | `/atividades/{id}/respostas/` | Professor   | Respostas dos alunos para uma atividade |
-| POST   | `/atividades/{id}/avaliar/`   | Professor   | Avaliar aluno (nota + feedback)        |
-| POST   | `/atividades/{id}/reativar/`  | Professor   | Reativar atividade para um aluno       |
-| POST   | `/respostas`                  | Aluno       | Enviar respostas (envio único)         |
-| GET    | `/me/respostas`               | Aluno       | Listar respostas enviadas com notas    |
-| GET    | `/me/atividades-respondidas`  | Aluno       | IDs de atividades já respondidas       |
+| Método | Rota                              | Acesso      | Descrição                              |
+|--------|-----------------------------------|-------------|----------------------------------------|
+| POST   | `/auth/login`                     | Público     | Login (retorna JWT + dados do usuário) |
+| GET    | `/me`                             | Autenticado | Dados do usuário logado                |
+| GET    | `/turmas`                         | Autenticado | Lista todas as turmas                  |
+| POST   | `/turmas/criar`                   | Professor   | Criar nova turma                       |
+| GET    | `/turmas/{id}/alunos/`            | Professor   | Listar alunos de uma turma             |
+| GET    | `/me/atividades`                  | Ambos       | Professor: suas atividades / Aluno: atividades da turma |
+| POST   | `/atividades`                     | Professor   | Criar nova atividade                   |
+| GET    | `/atividades/{id}/respostas/`     | Professor   | Respostas dos alunos para uma atividade |
+| POST   | `/atividades/{id}/reativar/`      | Professor   | Reativar atividade para um aluno       |
+| POST   | `/respostas`                      | Aluno       | Enviar respostas (envio único)         |
+| PATCH  | `/respostas/{id}/`                | Ambos       | Aluno: editar texto / Professor: nota e feedback |
+| GET    | `/me/respostas`                   | Aluno       | Listar respostas enviadas com notas    |
+| GET    | `/me/respostas/atividade/{id}/`   | Aluno       | Respostas do aluno em uma atividade    |
+| GET    | `/me/atividades-respondidas`      | Aluno       | IDs de atividades já respondidas       |
 
 ## Variáveis de Ambiente
 
