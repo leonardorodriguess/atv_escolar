@@ -9,9 +9,10 @@ import CorrigirRespostas from "./pages/CorrigirRespostas.tsx";
 import AlunoAtividades from "./pages/AlunoAtividades.tsx";
 import AlunoAtividadeDetalhe from "./pages/AlunoAtividadeDetalhe.tsx";
 import MinhasRespostas from "./pages/MinhasRespostas.tsx";
+import GerenciarTurmas from "./pages/GerenciarTurmas.tsx";
 import { Button } from "./components/ui/button.tsx";
 import { Badge } from "./components/ui/badge.tsx";
-import { BookOpen, PlusCircle, ClipboardList, Send, LogOut, GraduationCap } from "lucide-react";
+import { BookOpen, PlusCircle, ClipboardList, Send, LogOut, GraduationCap, Users } from "lucide-react";
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -54,6 +55,7 @@ export default function App() {
     ? [
         { to: "/professor/atividades", label: "Minhas Atividades", icon: BookOpen },
         { to: "/professor/criar", label: "Criar Atividade", icon: PlusCircle },
+        { to: "/professor/turmas", label: "Turmas", icon: Users },
       ]
     : [
         { to: "/aluno/atividades", label: "Atividades", icon: ClipboardList },
@@ -88,6 +90,9 @@ export default function App() {
             <div className="flex items-center gap-3">
               <div className="hidden items-center gap-2 sm:flex">
                 <span className="text-sm text-muted-foreground">{user.first_name}</span>
+                {user.role === "ALUNO" && user.turma_nome && (
+                  <Badge variant="outline">{user.turma_nome}</Badge>
+                )}
                 <Badge variant={user.role === "PROFESSOR" ? "default" : "success"}>{user.role}</Badge>
               </div>
               <Button variant="ghost" size="sm" onClick={handleLogout} className="gap-2 text-muted-foreground">
@@ -103,6 +108,7 @@ export default function App() {
           <Route path="/login" element={!user ? <Login onLogin={handleLogin} /> : <Navigate to="/" />} />
           <Route path="/professor/atividades" element={user?.role === "PROFESSOR" ? <ProfessorAtividades /> : <Navigate to="/login" />} />
           <Route path="/professor/criar" element={user?.role === "PROFESSOR" ? <CriarAtividade /> : <Navigate to="/login" />} />
+          <Route path="/professor/turmas" element={user?.role === "PROFESSOR" ? <GerenciarTurmas /> : <Navigate to="/login" />} />
           <Route path="/professor/atividades/:id/respostas" element={user?.role === "PROFESSOR" ? <CorrigirRespostas /> : <Navigate to="/login" />} />
           <Route path="/aluno/atividades" element={user?.role === "ALUNO" ? <AlunoAtividades /> : <Navigate to="/login" />} />
           <Route path="/aluno/atividades/:id" element={user?.role === "ALUNO" ? <AlunoAtividadeDetalhe /> : <Navigate to="/login" />} />

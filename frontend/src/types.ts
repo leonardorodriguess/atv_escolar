@@ -4,6 +4,7 @@ export interface User {
   first_name: string;
   role: "PROFESSOR" | "ALUNO";
   turma: number | null;
+  turma_nome: string | null;
 }
 
 export interface Questao {
