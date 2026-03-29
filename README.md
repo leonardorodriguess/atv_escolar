@@ -124,11 +124,12 @@ Caso prefira rodar cada serviço separadamente na sua máquina, consulte:
 ### Regras de Negócio Implementadas
 
 - Aluno deve pertencer a uma turma para ver atividades.
-- Aluno não pode enviar mais de uma resposta para a mesma atividade.
+- Aluno só pode enviar respostas uma única vez por atividade, mas pode editar antes da data de entrega (se ainda não foi avaliado).
 - Aluno não acessa atividades de outra turma.
-- Aluno pode editar resposta antes da data de entrega.
+- Professor pode reativar uma atividade para um aluno, permitindo novo envio.
 - Professor só corrige atividades que ele criou.
 - Professor pode editar nota e feedback.
+- Professor pode criar turmas e visualizar os alunos matriculados.
 - Nota obrigatória, entre 0 e 10. Feedback opcional.
 
 ## Endpoints da API
@@ -138,12 +139,16 @@ Caso prefira rodar cada serviço separadamente na sua máquina, consulte:
 | POST   | `/auth/login`                 | Público     | Login (retorna JWT + dados do usuário) |
 | GET    | `/me`                         | Autenticado | Dados do usuário logado                |
 | GET    | `/turmas`                     | Autenticado | Lista todas as turmas                  |
+| POST   | `/turmas/criar`               | Professor   | Criar nova turma                       |
+| GET    | `/turmas/{id}/alunos/`        | Professor   | Listar alunos de uma turma             |
 | GET    | `/me/atividades`              | Ambos       | Professor: suas atividades / Aluno: atividades da turma |
 | POST   | `/atividades`                 | Professor   | Criar nova atividade                   |
 | GET    | `/atividades/{id}/respostas/` | Professor   | Respostas dos alunos para uma atividade |
-| POST   | `/respostas`                  | Aluno       | Enviar resposta para uma atividade     |
-| GET    | `/me/respostas`               | Aluno       | Listar respostas enviadas              |
-| PATCH  | `/respostas/{id}/`            | Ambos       | Aluno: editar texto / Professor: nota e feedback |
+| POST   | `/atividades/{id}/avaliar/`   | Professor   | Avaliar aluno (nota + feedback)        |
+| POST   | `/atividades/{id}/reativar/`  | Professor   | Reativar atividade para um aluno       |
+| POST   | `/respostas`                  | Aluno       | Enviar respostas (envio único)         |
+| GET    | `/me/respostas`               | Aluno       | Listar respostas enviadas com notas    |
+| GET    | `/me/atividades-respondidas`  | Aluno       | IDs de atividades já respondidas       |
 
 ## Variáveis de Ambiente
 
@@ -159,3 +164,42 @@ Caso prefira rodar cada serviço separadamente na sua máquina, consulte:
 | `DB_HOST`              | Backend  | `db`                            | Host do PostgreSQL           |
 | `DB_PORT`              | Backend  | `5432`                          | Porta do PostgreSQL          |
 | `VITE_API_URL`         | Frontend | `http://localhost:8000`         | URL base da API              |
+
+
+## Possíveis Melhorias
+
+### Avaliação e Notas
+
+- **Nota por questão**: Permitir que o professor atribua uma nota individual para cada questão da atividade, em vez de uma nota única por atividade. Isso daria um feedback mais granular ao aluno.
+- **Valor/peso por questão**: Ao criar a atividade, o professor poderia definir o valor (pontuação máxima) de cada questão. A nota final seria calculada automaticamente com base nos pesos.
+- **Nota automática com gabarito**: Para questões objetivas, o professor poderia cadastrar a resposta esperada e o sistema corrigiria automaticamente.
+- **Média do aluno**: Dashboard com média geral do aluno considerando todas as atividades avaliadas.
+
+### Gestão de Turmas e Alunos
+
+- **Matricular/remover alunos pela interface**: Hoje a associação aluno → turma é feita via seed ou Django admin. O professor poderia gerenciar isso diretamente pela plataforma.
+- **Cadastro de alunos pelo professor**: Permitir que o professor cadastre novos alunos e já os associe a uma turma.
+- **Importação em lote (CSV)**: Upload de planilha com lista de alunos para cadastro em massa.
+- **Aluno em múltiplas turmas**: Atualmente cada aluno pertence a uma única turma. Suportar múltiplas turmas via relação ManyToMany.
+
+### Atividades
+
+- **Tipos de questão**: Além de texto livre, suportar múltipla escolha, verdadeiro/falso e preenchimento de lacunas.
+- **Anexos**: Permitir upload de arquivos (PDF, imagens) tanto nas questões quanto nas respostas.
+- **Rascunho de atividade**: Professor poderia salvar atividades como rascunho antes de publicar para a turma.
+- **Duplicar atividade**: Copiar uma atividade existente para outra turma ou período.
+- **Ordenação e filtros**: Filtrar atividades por turma, status (aberta/encerrada) e período.
+
+### Experiência do Aluno
+
+- **Rascunho de respostas**: Salvar respostas parciais antes do envio definitivo (auto-save).
+- **Notificações**: Avisar o aluno quando uma nova atividade for criada ou quando receber uma avaliação.
+- **Histórico de notas**: Página com histórico completo de notas e evolução ao longo do tempo.
+
+### Infraestrutura e Segurança
+
+- **Refresh token automático**: Renovar o token JWT automaticamente quando estiver próximo de expirar.
+- **Rate limiting**: Limitar tentativas de login para prevenir brute force.
+- **Logs de auditoria**: Registrar ações importantes (envio de respostas, avaliações, reativações).
+- **Testes automatizados**: Cobertura de testes unitários e de integração no backend e frontend.
+- **CI/CD**: Pipeline de deploy automatizado com testes, lint e build.
