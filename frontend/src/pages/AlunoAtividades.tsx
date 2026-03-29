@@ -5,7 +5,7 @@ import { Atividade } from "../types";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "../components/ui/card";
 import { Button } from "../components/ui/button";
 import { Badge } from "../components/ui/badge";
-import { Calendar, ClipboardList, Eye, CheckCircle2 } from "lucide-react";
+import { Calendar, ClipboardList, Eye, CheckCircle2, Pencil } from "lucide-react";
 
 export default function AlunoAtividades() {
   const [atividades, setAtividades] = useState<Atividade[]>([]);
@@ -51,8 +51,12 @@ export default function AlunoAtividades() {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  {jaRespondeu ? (
-                    <p className="text-sm text-muted-foreground">Respondida. Para editar, solicite ao professor.</p>
+                  {jaRespondeu && aberta ? (
+                    <Link to={`/aluno/atividades/${a.id}?editar=1`}>
+                      <Button variant="outline" size="sm" className="gap-2"><Pencil className="h-3.5 w-3.5" />Editar Respostas</Button>
+                    </Link>
+                  ) : jaRespondeu ? (
+                    <p className="text-sm text-muted-foreground">Atividade encerrada. Respostas não podem ser editadas.</p>
                   ) : aberta ? (
                     <Link to={`/aluno/atividades/${a.id}`}>
                       <Button variant="outline" size="sm" className="gap-2"><Eye className="h-3.5 w-3.5" />Responder</Button>

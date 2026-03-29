@@ -3,9 +3,11 @@ from .models import User, Turma, Atividade, Questao, Resposta, Avaliacao
 
 
 class UserSerializer(serializers.ModelSerializer):
+    turma_nome = serializers.CharField(source="turma.nome", read_only=True, default=None)
+
     class Meta:
         model = User
-        fields = ["id", "email", "first_name", "role", "turma"]
+        fields = ["id", "email", "first_name", "role", "turma", "turma_nome"]
 
 
 class TurmaSerializer(serializers.ModelSerializer):

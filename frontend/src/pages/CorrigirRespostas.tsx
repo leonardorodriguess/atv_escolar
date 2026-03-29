@@ -26,6 +26,7 @@ export default function CorrigirRespostas() {
   const [salvando, setSalvando] = useState<number | null>(null);
   const [sucesso, setSucesso] = useState<number | null>(null);
   const [reativando, setReativando] = useState<number | null>(null);
+  const [erroNota, setErroNota] = useState<number | null>(null);
 
   const carregarDados = () => {
     api.get(`/atividades/${id}/respostas/`).then((r) => {
@@ -44,14 +45,23 @@ export default function CorrigirRespostas() {
   useEffect(() => { carregarDados(); }, [id]);
 
   const avaliar = async (alunoId: number) => {
+    const valor = Number(notas[alunoId]);
+    if (notas[alunoId] === "" || isNaN(valor) || valor < 0 || valor > 10) {
+      setErroNota(alunoId);
+      return;
+    }
+    setErroNota(null);
     setSalvando(alunoId);
     setSucesso(null);
     try {
-      await api.post(`/atividades/${id}/avaliar/`, {
-        aluno: alunoId, nota: Number(notas[alunoId]), feedback: feedbacks[alunoId],
+      const alunoDados = dados.find((d) => d.aluno_id === alunoId);
+      const respostaId = alunoDados?.respostas[0]?.id;
+      if (!respostaId) return;
+      await api.patch(`/respostas/${respostaId}/`, {
+        nota: Number(notas[alunoId]), feedback: feedbacks[alunoId],
       });
       setSucesso(alunoId);
-      setTimeout(() => navigate("/professor/atividades"), 1000);
+      carregarDados();
     } catch { /* erro */ }
     finally { setSalvando(null); }
   };
@@ -107,7 +117,8 @@ export default function CorrigirRespostas() {
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div className="space-y-2">
                       <Label htmlFor={`nota-${d.aluno_id}`}>Nota (0-10)</Label>
-                      <Input id={`nota-${d.aluno_id}`} type="number" min="0" max="10" step="0.01" value={notas[d.aluno_id] || ""} onChange={(e) => setNotas({ ...notas, [d.aluno_id]: e.target.value })} />
+                      <Input id={`nota-${d.aluno_id}`} type="number" min="0" max="10" step="0.01" value={notas[d.aluno_id] || ""} onChange={(e) => { setNotas({ ...notas, [d.aluno_id]: e.target.value }); if (erroNota === d.aluno_id) setErroNota(null); }} />
+                      {erroNota === d.aluno_id && <p className="text-xs text-destructive">A nota deve ser entre 0 e 10</p>}
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor={`fb-${d.aluno_id}`}>Feedback (opcional)</Label>
