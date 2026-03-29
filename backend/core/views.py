@@ -135,6 +135,9 @@ def criar_respostas_view(request):
     if atividade.turma != user.turma:
         return Response({"detail": "Você não pertence a esta turma"}, status=403)
 
+    if atividade.data_entrega < timezone.now().date():
+        return Response({"detail": "Prazo de entrega expirado"}, status=400)
+
     questao_ids = set(atividade.questoes.values_list("id", flat=True))
     if Resposta.objects.filter(questao_id__in=questao_ids, aluno=user).exists():
         return Response({"detail": "Você já enviou respostas para esta atividade"}, status=400)
@@ -179,7 +182,7 @@ def minhas_respostas_view(request):
     return Response(result)
 
 
-@extend_schema(tags=["Respostas"], summary="Editar resposta (Aluno)", description="Aluno edita texto de uma resposta antes da data de entrega.")
+@extend_schema(tags=["Respostas"], summary="Editar resposta (ALUNO) ou avaliar (PROFESSOR)", description="ALUNO: edita o texto de uma resposta antes da data de entrega. Body: {texto: '...'}. PROFESSOR: envia nota e feedback para a atividade da resposta. Body: {nota: 8.5, feedback: '...'}")
 @api_view(["PATCH"])
 def editar_resposta_view(request, pk):
     user = request.user
@@ -188,48 +191,39 @@ def editar_resposta_view(request, pk):
     except Resposta.DoesNotExist:
         return Response({"detail": "Resposta não encontrada"}, status=404)
 
+    atividade = resposta.questao.atividade
+
     if user.role == "ALUNO":
         if resposta.aluno != user:
             return Response({"detail": "Sem permissão"}, status=403)
-        if resposta.questao.atividade.data_entrega < timezone.now().date():
+        if atividade.data_entrega < timezone.now().date():
             return Response({"detail": "Prazo de entrega expirado"}, status=400)
+        if Avaliacao.objects.filter(atividade=atividade, aluno=user).exists():
+            return Response({"detail": "Atividade já foi avaliada. Não é possível editar."}, status=400)
         resposta.texto = request.data.get("texto", resposta.texto)
         resposta.save()
         return Response(RespostaSerializer(resposta).data)
 
+    if user.role == "PROFESSOR":
+        if atividade.professor != user:
+            return Response({"detail": "Sem permissão"}, status=403)
+        nota = request.data.get("nota")
+        feedback = request.data.get("feedback", "")
+        if nota is None:
+            return Response({"detail": "Nota é obrigatória"}, status=400)
+        try:
+            nota = float(nota)
+        except (ValueError, TypeError):
+            return Response({"detail": "Nota inválida"}, status=400)
+        if nota < 0 or nota > 10:
+            return Response({"detail": "Nota deve estar entre 0 e 10"}, status=400)
+        avaliacao, _ = Avaliacao.objects.update_or_create(
+            atividade=atividade, aluno=resposta.aluno,
+            defaults={"nota": nota, "feedback": feedback},
+        )
+        return Response(AvaliacaoSerializer(avaliacao).data)
+
     return Response({"detail": "Sem permissão"}, status=403)
-
-
-@extend_schema(tags=["Avaliações"], summary="Avaliar aluno (Professor)", description="Professor atribui nota (0-10) e feedback para um aluno em uma atividade. Cria ou atualiza a avaliação.")
-@api_view(["POST"])
-def avaliar_view(request, atividade_id):
-    user = request.user
-    if user.role != "PROFESSOR":
-        return Response({"detail": "Sem permissão"}, status=403)
-
-    try:
-        atividade = Atividade.objects.get(id=atividade_id, professor=user)
-    except Atividade.DoesNotExist:
-        return Response({"detail": "Atividade não encontrada"}, status=404)
-
-    aluno_id = request.data.get("aluno")
-    nota = request.data.get("nota")
-    feedback = request.data.get("feedback", "")
-
-    if nota is None:
-        return Response({"detail": "Nota é obrigatória"}, status=400)
-    try:
-        nota = float(nota)
-    except (ValueError, TypeError):
-        return Response({"detail": "Nota inválida"}, status=400)
-    if nota < 0 or nota > 10:
-        return Response({"detail": "Nota deve estar entre 0 e 10"}, status=400)
-
-    avaliacao, _ = Avaliacao.objects.update_or_create(
-        atividade=atividade, aluno_id=aluno_id,
-        defaults={"nota": nota, "feedback": feedback},
-    )
-    return Response(AvaliacaoSerializer(avaliacao).data)
 
 
 @extend_schema(tags=["Respostas"], summary="Atividades já respondidas (Aluno)", description="Retorna lista de IDs de atividades que o aluno já respondeu.")
@@ -240,6 +234,22 @@ def atividades_respondidas_view(request):
         return Response({"detail": "Sem permissão"}, status=403)
     ids = Resposta.objects.filter(aluno=user).values_list("questao__atividade_id", flat=True).distinct()
     return Response(list(ids))
+
+
+@extend_schema(tags=["Respostas"], summary="Respostas do aluno em uma atividade", description="Retorna as respostas do aluno logado para uma atividade específica.")
+@api_view(["GET"])
+def minhas_respostas_atividade_view(request, atividade_id):
+    user = request.user
+    if user.role != "ALUNO":
+        return Response({"detail": "Sem permissão"}, status=403)
+    try:
+        atividade = Atividade.objects.get(id=atividade_id)
+    except Atividade.DoesNotExist:
+        return Response({"detail": "Atividade não encontrada"}, status=404)
+    if atividade.turma != user.turma:
+        return Response({"detail": "Você não pertence a esta turma"}, status=403)
+    respostas = Resposta.objects.filter(questao__atividade=atividade, aluno=user).select_related("questao")
+    return Response(RespostaSerializer(respostas, many=True).data)
 
 
 @extend_schema(tags=["Respostas"], summary="Reativar atividade para aluno (Professor)", description="Remove as respostas e avaliação de um aluno em uma atividade, permitindo que ele responda novamente.")
@@ -263,3 +273,30 @@ def reativar_view(request, atividade_id):
     Avaliacao.objects.filter(atividade=atividade, aluno_id=aluno_id).delete()
 
     return Response({"detail": f"Atividade reativada. {deletadas} resposta(s) removida(s)."})
+
+
+@extend_schema(tags=["Turmas"], summary="Criar turma (Professor)", description="Professor cria uma nova turma.")
+@api_view(["POST"])
+def criar_turma_view(request):
+    if request.user.role != "PROFESSOR":
+        return Response({"detail": "Sem permissão"}, status=403)
+    nome = request.data.get("nome", "").strip()
+    if not nome:
+        return Response({"detail": "Nome da turma é obrigatório"}, status=400)
+    if Turma.objects.filter(nome=nome).exists():
+        return Response({"detail": "Já existe uma turma com este nome"}, status=400)
+    turma = Turma.objects.create(nome=nome)
+    return Response(TurmaSerializer(turma).data, status=201)
+
+
+@extend_schema(tags=["Turmas"], summary="Alunos de uma turma", description="Retorna a lista de alunos matriculados em uma turma.")
+@api_view(["GET"])
+def alunos_turma_view(request, turma_id):
+    if request.user.role != "PROFESSOR":
+        return Response({"detail": "Sem permissão"}, status=403)
+    try:
+        turma = Turma.objects.get(id=turma_id)
+    except Turma.DoesNotExist:
+        return Response({"detail": "Turma não encontrada"}, status=404)
+    alunos = User.objects.filter(turma=turma, role="ALUNO").order_by("first_name")
+    return Response(UserSerializer(alunos, many=True).data)
